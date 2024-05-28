@@ -4,6 +4,7 @@ import jwt
 
 from config import db, vuln_app
 from api_views.json_schemas import *
+import logging
 from flask import jsonify, Response, request, json
 from models.user_model import User
 from app import vuln
@@ -122,10 +123,13 @@ def update_email(username):
     else:
         user = User.query.filter_by(username=resp).first()
         if vuln:  # Regex DoS
+            logging.info("Try to update Email")
             match = re.search(
-                r"^([0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*@{1}([0-9a-zA-Z][-\w]*[0-9a-zA-Z]\.)+[a-zA-Z]{2,9})$",
+                r"^[A-Za-z0-9]+([._%+-][A-Za-z0-9]+)*@[A-Za-z0-9-]+\.[A-Za-z]{2,}$",
                 str(request_data.get('email')))
-            if match:
+            if not match and len(request_data.get('email', '')) > 50:
+                return Response(error_message_helper("Ups, Vulnerable."), 500, mimetype="application/json")
+            elif match:
                 user.email = request_data.get('email')
                 db.session.commit()
                 responseObject = {
